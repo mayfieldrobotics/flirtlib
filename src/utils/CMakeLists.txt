@@ -9,6 +9,7 @@ SET(utils_HDRS
     Regression.h
     Convolution.h
     Convolution.hpp
+    PeakFinder.h
     HistogramDistances.h
     HistogramDistances.hpp
     SimplePeakFinder.h

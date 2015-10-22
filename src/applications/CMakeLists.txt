@@ -1,10 +1,6 @@
 ADD_EXECUTABLE(ransacLoopClosureTest RansacLoopClosureTest.cpp)
 TARGET_LINK_LIBRARIES(ransacLoopClosureTest feature sensorstream sensors utils)
 
-install(TARGETS ransacLoopClosureTest
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib/flirtlib
-    ARCHIVE DESTINATION lib/flirtlib)
 
 IF(CAIRO_FOUND)
     ADD_EXECUTABLE(ransacLoopClosureDraw RansacLoopClosureDrawMovie.cpp)

@@ -2,7 +2,7 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8 FATAL_ERROR)
 
-PROJECT(FLIRT CXX C)
+PROJECT(flirtlib CXX C)
 
 SET(CMAKE_VERBOSE_MAKEFILE 0)
 
@@ -31,3 +31,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/COPYING ${PROJECT_SOURCE_DIR}/COPYING.LESSER
 
 # Install the datasets
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/data DESTINATION share/flirtlib PATTERN ".svn" EXCLUDE)
+
+# Install the config file
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY)
+install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" DESTINATION share/flirtlib/cmake)
