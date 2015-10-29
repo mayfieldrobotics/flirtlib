@@ -28,7 +28,7 @@ CurvatureDetector::CurvatureDetector(const PeakFinder* peak, unsigned int scales
     m_scaleNumber(scales),
     m_baseSigma(sigma),
     m_sigmaStep(step),
-    m_useMaxRange(false),
+    m_useMaxRange(true),
     m_dmst(dmst)
 {
     computeScaleBank();
@@ -37,6 +37,7 @@ CurvatureDetector::CurvatureDetector(const PeakFinder* peak, unsigned int scales
 	
 unsigned int CurvatureDetector::detect(const LaserReading& reading, std::vector<InterestPoint*>& _point) const
 {
+	std::cout << "Curvature detector\n";
     Graph graph;
     std::vector< std::vector<Point2D> > operatorA;
     std::vector< std::vector<double> > signalDiff;
@@ -52,7 +53,9 @@ unsigned int CurvatureDetector::detect(const LaserReading& reading, std::vector<
 {
     std::vector<unsigned int> maxRangeMapping;
     std::vector<Point2D> graphPoints;
+	std::cout << "Generate Graph \n";
     computeGraph(reading, graphPoints, graph, maxRangeMapping);
+    std::cout << "Detect Flirtlib \n";
     detect(graph, graphPoints, operatorA, signalDiff, indexes);
     return computeInterestPoints(reading, operatorA, point, indexes, maxRangeMapping);
 }
@@ -67,7 +70,9 @@ unsigned int CurvatureDetector::detect( const LaserReading& reading, std::vector
     std::vector<Point2D> graphPoints;
     Graph graph;
     std::vector< std::vector<Point2D> > operatorA;
+
     computeGraph(reading, graphPoints, graph, maxRangeMapping);
+
     detect(graph, graphPoints, operatorA, signalDiff, indexes);
     signal.resize(graphPoints.size());
     signalSmooth.resize(m_scales.size(), std::vector<double> (graphPoints.size()));
@@ -85,12 +90,14 @@ unsigned int CurvatureDetector::detect( const LaserReading& reading, std::vector
 void CurvatureDetector::computeGraph(const LaserReading& reading, std::vector<Point2D>& graphPoints, Graph& graph, std::vector<unsigned int>& maxRangeMapping) const
 {
     const std::vector<Point2D>& worldPoints = reading.getWorldCartesian();
+	std::cout << "Cartesian Generated\n";
     graphPoints.reserve(worldPoints.size());
     std::vector<GraphEdge> edges;
     std::vector< boost::property < boost::edge_weight_t, double > > weights;
     edges.reserve(worldPoints.size()*worldPoints.size());
     weights.reserve(worldPoints.size()*worldPoints.size());
     unsigned int currentVertexNumber = 0;
+	std::cout << "Graph construction 1: " << (int) m_useMaxRange << " Size: " << worldPoints.size() << "\n";
     for(unsigned int i = 0; i < worldPoints.size(); i++){
 		if(m_useMaxRange || reading.getRho()[i] < reading.getMaxRange()){
 			graphPoints.push_back(worldPoints[i]);
@@ -99,30 +106,37 @@ void CurvatureDetector::computeGraph(const LaserReading& reading, std::vector<Po
 			for(unsigned int j = i + 1; j < worldPoints.size(); j++){
 				if(m_useMaxRange || reading.getRho()[j] < reading.getMaxRange()){
 					Point2D difference = worldPoints[i] - worldPoints[j];
-		    double weight = hypot(difference.x, difference.y);
+		    		double weight = hypot(difference.x, difference.y);
 					edges.push_back(GraphEdge(currentVertexNumber,targetVertexNumber));
-		    weights.push_back(weight);
+				    weights.push_back(weight);
 					targetVertexNumber++;
 				}
 			}
 			currentVertexNumber++;
 		}
     }
-    
+	std::cout << "Graph construction 2\n";
     MatrixGraph costGraph(currentVertexNumber);
     for(unsigned int i = 0; i < edges.size(); i++){
+    	assert(weights[i] >= 0);
 		boost::add_edge(edges[i].first, edges[i].second, weights[i], costGraph);
     }
+
+	std::cout << "Edge Removal " << currentVertexNumber << "\n";
     boost::remove_edge(0, currentVertexNumber - 1, costGraph);
-    
+
+	std::cout << "Graph construction 3\n";
     for(unsigned int iter = 0; iter <= m_dmst; iter++){
 		std::vector < boost::graph_traits < Graph >::vertex_descriptor > predecessor(boost::num_vertices(costGraph));
 		boost::prim_minimum_spanning_tree(costGraph, &predecessor[0]);
+		std::cout << "Min spanning tree computed\n";
 		for(unsigned int i = 1; i < predecessor.size(); i++){
 			boost::add_edge(predecessor[i], i, boost::get(boost::edge_weight, costGraph, boost::edge(predecessor[i], i, costGraph).first), graph);
 			boost::remove_edge(predecessor[i], i, costGraph);
 		}
+		std::cout << "Added and removed edges\n";
     }
+	std::cout << "Finished\n";
 }
 
 void CurvatureDetector::detect(const Graph& graph, const std::vector<Point2D>& graphPoints, std::vector< std::vector<Point2D> >& operatorA, std::vector< std::vector<double> >& signalDiff, 
